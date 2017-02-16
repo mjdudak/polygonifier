@@ -1,0 +1,30 @@
+{
+  "name": "polygonifier",
+  "version": "1.0.0",
+  "description": "Tool to convert address ranges to geoJSON polygons.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mjdudak/polygonifier.git"
+  },
+  "keywords": [
+    "geo",
+    "address",
+    "geojson"
+  ],
+  "author": "Matthew Dudak",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mjdudak/polygonifier/issues"
+  },
+  "homepage": "https://github.com/mjdudak/polygonifier#readme",
+  "dependencies": {
+    "commander": "^2.9.0",
+    "d3-dsv": "^1.0.3",
+    "geo-convex-hull": "^1.2.0",
+    "node-geocoder": "^3.16.0"
+  }
+}
