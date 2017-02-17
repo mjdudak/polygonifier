@@ -22,9 +22,10 @@
   },
   "homepage": "https://github.com/mjdudak/polygonifier#readme",
   "dependencies": {
-    "commander": "^2.9.0",
     "d3-dsv": "^1.0.3",
     "geo-convex-hull": "^1.2.0",
-    "node-geocoder": "^3.16.0"
+    "jsonfile": "^2.4.0",
+    "node-geocoder": "^3.16.0",
+    "progress": "^1.1.8"
   }
 }
