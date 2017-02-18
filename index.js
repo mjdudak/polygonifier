@@ -2,21 +2,22 @@ var jsonfile = require('jsonfile');
 var {readFileSync} = require('fs');
 var {dsvFormat} = require('d3-dsv');
 var calculateConvexHull = require('geo-convex-hull');
-var NodeGeocoder = require('node-geocoder');
 var ProgressBar = require('progress');
+var request = require('request');
+var rp = require('request-promise');
+var trim = require('trim');
 
-//Initialize the geocoder
-var geocoder_options = {
-  provider: 'openstreetmap'
-};
-var geocoder2_options = {
-  provider: "google"
-};
-var geocoder = NodeGeocoder(geocoder_options);
-var geocoder2 = NodeGeocoder(geocoder2_options);
+//Get authentication key
+var auth_key = readFileSync('auth_key', "utf8");
+auth_key = trim(auth_key)
 
 //Initialize the pipe delimited file parser
-var psv = dsvFormat("|");
+var psv = dsvFormat(",");
+
+//Build a sleep function so we don't throw too many requests at mapzen
+const sleep = (time) => {
+  return new Promise((resolve) => setTimeout(resolve, time));
+}
 
 //A wrapper to get the polygon for a set of lat-long points
 const getPolygon = (points) => {
@@ -26,14 +27,16 @@ const getPolygon = (points) => {
 //Use google's geocoder to get the lat-long from an address
 const getLatLong = async (address) => {
   address['country'] = 'US';
-  address['state'] = 'RI';
-  var lat_long = await geocoder.geocode(address);
-  if (lat_long.length==0){
-    address['address'] = address['street'];
-    address['zipcode'] = address['postalcode'];
-    lat_long = await geocoder2.geocode(address);
+  var url = `https://search.mapzen.com/v1/search/structured?address=${address['address']}&postalcode=${address['postalcode']}&region=${address['state']}&country=${address['country']}&api_key=${auth_key}`
+  try {
+    var search_result = await rp(url);
+    var result = JSON.parse(search_result)
+    return {"latitude": result['features'][0]['geometry']['coordinates'][1], "longitude": result['features'][0]['geometry']['coordinates'][0]}
   }
-  return lat_long;
+  catch(e) {
+    console.log(e)
+    return e
+  }
 };
 
 //Given the name of a file, output the polygons
@@ -42,23 +45,19 @@ const processAddresses = async (file) => {
   try {
     var data = readFileSync(file, "utf8");
     //Parse the data as a pipe delimited file
-    var ranges = psv.parse(data);
+    var addresses = psv.parse(data);
     var precincts = [];
     var precinct_points = {};
     //Loop through our address ranges, and create a list of precincts, as well as a list of address ranges corresponding to each precinct
-    for (i=0; i<ranges.length; i++) {
-      var row = ranges[i];
-      var start_address = {"street": row["START"] + " " + row["STREET"], "postalcode": row["ZIP"]};
-      var end_address = {"street": row["END"] + " " + row["STREET"], "postalcode": row["ZIP"]};
-      if (precincts.includes(row["PRECINCT"])) {
-        precinct_points[row["PRECINCT"]].push(start_address);
-        precinct_points[row["PRECINCT"]].push(end_address);
+    for (i=0; i<addresses.length; i++) {
+      var row = addresses[i];
+      if (precincts.includes(row["precinct"])) {
+        precinct_points[row["precinct"]].push(row);
       }
       else {
-        precincts.push(row["PRECINCT"]);
-        precinct_points[row["PRECINCT"]] = [];
-        precinct_points[row["PRECINCT"]].push(start_address);
-        precinct_points[row["PRECINCT"]].push(end_address);
+        precincts.push(row["precinct"]);
+        precinct_points[row["precinct"]] = [];
+        precinct_points[row["precinct"]].push(row);
       }
     }
   }
@@ -74,16 +73,15 @@ const processAddresses = async (file) => {
       var bar = new ProgressBar(prec + ': [:bar] :percent (:current/:total)', {total: address_points.length, width: 30});
       for (j=0; j<address_points.length; j++){
         try {
-          var res = await getLatLong(address_points[j]);
-          var point = {"latitude": res[0]['latitude'], "longitude": res[0]['longitude']};
+          var point = await getLatLong(address_points[j]);
           latlong_points.push(point);
         }
         catch(e) {
           console.error(e)
-          console.log(res)
           console.log(address_points[j])
         }
         bar.tick();
+        await sleep(160);
       }
       var poly = getPolygon(latlong_points);
       var feat = {"type": "Feature",
@@ -113,7 +111,7 @@ const processAddresses = async (file) => {
 
 
 try {
-  processAddresses("StreetList.txt");
+  processAddresses("Addresses1.csv");
 }
 catch(e) {
   console.error(e);
