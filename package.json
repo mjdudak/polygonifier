@@ -25,7 +25,9 @@
     "d3-dsv": "^1.0.3",
     "geo-convex-hull": "^1.2.0",
     "jsonfile": "^2.4.0",
-    "node-geocoder": "^3.16.0",
-    "progress": "^1.1.8"
+    "progress": "^1.1.8",
+    "request": "^2.79.0",
+    "request-promise": "^4.1.1",
+    "trim": "0.0.1"
   }
 }
